@@ -19,6 +19,15 @@ func getEnvironment(key string, defaultValue string) string {
 	return val
 }
 
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Do stuff here
+		log.Println(r.RequestURI)
+		// Call the next handler, which can be another middleware in the chain, or the final handler.
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	url := getEnvironment("PG_META_DB_URL", "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable")
 	db, err := sqlx.Connect("postgres", url)
@@ -29,12 +38,19 @@ func main() {
 	db = db.Unsafe()
 
 	r := mux.NewRouter()
+
+	// Middlewares
+	r.Use(loggingMiddleware)
+
+	// Routes
 	routes.SchemaRouter(db, r)
 	routes.TableRouter(db, r.PathPrefix("/schema/{schema}").Subrouter())
 	routes.ColumnsRouter(db, r.PathPrefix("/schema/{schema}/table/{table}").Subrouter())
 
+	// Handler
 	http.Handle("/", r)
 
+	// Print all routes
 	_ = r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		t, err := route.GetPathTemplate()
 		if err != nil {
@@ -46,10 +62,12 @@ func main() {
 	})
 
 	srv := &http.Server{
-		Handler:      r,
-		Addr:         ":8080",
-		WriteTimeout: 30 * time.Second,
-		ReadTimeout:  30 * time.Second,
+		Handler: r,
+		Addr:    ":8080",
+		// Good practice to set timeouts to avoid Slowloris attacks.
+		WriteTimeout: time.Second * 30,
+		ReadTimeout:  time.Second * 30,
+		IdleTimeout:  time.Second * 60,
 	}
 
 	log.Println(srv)

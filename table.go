@@ -95,3 +95,11 @@ func ListTables(db *sqlx.DB, schema string) ([]Table, error) {
 	}
 	return rows, nil
 }
+
+func GetTable(db *sqlx.DB, schema string, tableName string) (table Table, err error) {
+	err = NamedGet(db, &table, QueryGetTable, map[string]interface{}{
+		"schema":    schema,
+		"tableName": tableName,
+	})
+	return
+}

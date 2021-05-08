@@ -93,5 +93,10 @@ const (
 				)
 				OR has_any_column_privilege(c.oid, 'SELECT, INSERT, UPDATE, REFERENCES')
 			) 
-			AND nc.nspname=:schema;`
+			AND nc.nspname=:schema
+		`
+
+	QueryGetTable = QueryListTables + `
+			AND c.relname=:tableName
+		`
 )
