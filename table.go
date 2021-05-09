@@ -2,7 +2,11 @@ package pgmeta
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
+	"strings"
 )
 
 type PrimaryKey struct {
@@ -101,5 +105,26 @@ func GetTable(db *sqlx.DB, schema string, tableName string) (table Table, err er
 		"schema":    schema,
 		"tableName": tableName,
 	})
+	return
+}
+
+func DropTable(db *sqlx.DB, schema string, tableName string) (err error) {
+	return DeleteTable(db, schema, tableName, true)
+}
+
+func TruncateTable(db *sqlx.DB, schema string, tableName string) (err error) {
+	return DeleteTable(db, schema, tableName, true)
+}
+
+func DeleteTable(db *sqlx.DB, schemaName string, tableName string, shouldDrop bool) (err error) {
+	if len(strings.TrimSpace(schemaName)) == 0 || len(strings.TrimSpace(tableName)) == 0 {
+		return errors.New("schema & table name should not be blank")
+	}
+	schema, table := pq.QuoteIdentifier(schemaName), pq.QuoteIdentifier(tableName)
+	if shouldDrop {
+		_, err = db.Exec(fmt.Sprintf("DROP TABLE %s.%s", schema, table))
+	} else {
+		_, err = db.Exec(fmt.Sprintf("TRUNCATE TABLE %s.%s", schema, table))
+	}
 	return
 }
