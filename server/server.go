@@ -4,6 +4,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/rs/cors"
 	"log"
 	"net/http"
 	"os"
@@ -41,7 +42,6 @@ func main() {
 
 	// Middlewares
 	r.Use(loggingMiddleware)
-
 	// Routes
 	routes.SchemaRouter(db, r)
 	routes.TableRouter(db, r.PathPrefix("/schema/{schema}").Subrouter())
@@ -61,15 +61,17 @@ func main() {
 		return nil
 	})
 
+	// Cors
+	handler := cors.Default().Handler(r)
+
 	srv := &http.Server{
-		Handler: r,
+		Handler: handler,
 		Addr:    ":8080",
 		// Good practice to set timeouts to avoid Slowloris attacks.
 		WriteTimeout: time.Second * 30,
 		ReadTimeout:  time.Second * 30,
 		IdleTimeout:  time.Second * 60,
 	}
-
 	log.Println(srv)
 	log.Fatal(srv.ListenAndServe())
 }
